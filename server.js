@@ -38,10 +38,7 @@ initializeServer();
 // Middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://test-series-ujwal-academy.vercel.app/",
-    ], // your frontend URL
+    origin: "https://test-series-ujwal-academy.vercel.app", // your frontend URL
     credentials: true,
   })
 );
