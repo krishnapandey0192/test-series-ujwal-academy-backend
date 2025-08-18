@@ -40,7 +40,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://test-series-ujwal-academy-3ldmmr152.vercel.app",
+      "https://test-series-ujwal-academy.vercel.app/",
     ], // your frontend URL
     credentials: true,
   })
