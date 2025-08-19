@@ -38,7 +38,7 @@ initializeServer();
 // Middleware
 app.use(
   cors({
-    origin: "https://test-series-ujwal-academy.vercel.app", // your frontend URL
+    origin: "http://localhost:5173", // your frontend URL
     credentials: true,
   })
 );
@@ -51,7 +51,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tests", authenticateUser, testRoutes);
 app.use("/api/questions", authenticateUser, questionRoutes);
 app.use("/api/attempts", authenticateUser, attemptRoutes);
-app.use("/api/performance", authenticateUser, performanceRoutes);
+app.use("/api/performance",  performanceRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

@@ -1,3 +1,6 @@
+const {
+  getTestAnalysis,
+} = require("../controllers/performanceTestAnalysisController");
 const express = require("express");
 const router = express.Router();
 const {
@@ -8,11 +11,13 @@ const {
 const {
   getAllStudentsTests,
 } = require("../controllers/studentAnalysisController");
+const authenticateUser = require("../middleware/authMiddleware");
 
 // More specific routes should come first
 router.get("/analytics", getOverallAnalytics);
-router.get("/all-students-tests", getAllStudentsTests);
-router.get("/student/:studentId/test/:testId", getTestPerformance);
-router.get("/student/:studentId", getStudentPerformance);
+router.get("/all-students-tests", authenticateUser, getAllStudentsTests);
+router.get("/test-analysis", authenticateUser, getTestAnalysis);
+router.get("/student/:studentId/test/:testId", authenticateUser, getTestPerformance);
+router.get("/student/:studentId", authenticateUser, getStudentPerformance);
 
 module.exports = router;

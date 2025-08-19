@@ -25,14 +25,6 @@ exports.submitAttempt = async (req, res) => {
       return res.status(404).json({ error: "Test not found" });
     }
 
-    // Check if student already attempted this test
-    const existingAttempt = await Attempt.findOne({ studentId, testId });
-    if (existingAttempt) {
-      return res
-        .status(409)
-        .json({ error: "You have already attempted this test" });
-    }
-
     // Get all questions for this test
     const questions = await Question.find({ testId });
     const questionMap = new Map(questions.map((q) => [q._id.toString(), q]));

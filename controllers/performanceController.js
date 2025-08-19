@@ -194,9 +194,9 @@ exports.getTestPerformance = async (req, res) => {
 exports.getOverallAnalytics = async (req, res) => {
   try {
     // Only admins can view overall analytics
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied. Admin only." });
-    }
+    // if (req.user.role !== "admin") {
+    //   return res.status(403).json({ error: "Access denied. Admin only." });
+    // }
 
     const totalTests = await Test.countDocuments();
     const totalAttempts = await Attempt.countDocuments();
