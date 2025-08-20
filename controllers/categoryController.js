@@ -1,5 +1,6 @@
 const Category = require("../models/Category");
 const Test = require("../models/Test");
+const mongoose = require("mongoose");
 
 exports.createCategory = async (req, res) => {
   try {
@@ -37,12 +38,20 @@ exports.getCategoryById = async (req, res) => {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: "Invalid category ID format" });
     }
+
     const category = await Category.findById(id);
     if (!category) {
       return res.status(404).json({ error: "Category not found" });
     }
-    // Get all tests related to this category
-    const tests = await Test.find({ categoryId: id }).sort({ createdAt: -1 });
+
+    // Convert string ID to ObjectId for proper matching
+    const categoryObjectId = new mongoose.Types.ObjectId(id);
+
+    // Get all tests related to this category with proper ObjectId matching
+    const tests = await Test.find({ categoryId: categoryObjectId }).sort({
+      createdAt: -1,
+    });
+
     res.json({ category, tests });
   } catch (err) {
     console.error("Get category error:", err);
