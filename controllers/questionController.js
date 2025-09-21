@@ -35,6 +35,7 @@ exports.getQuestionsByTest = async (req, res) => {
       questions,
       total: questions.length,
       testTitle: test.title,
+      duration: test.duration,
     });
   } catch (err) {
     console.error("Get questions error:", err);
