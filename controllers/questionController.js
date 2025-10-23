@@ -35,6 +35,7 @@ exports.getQuestionsByTest = async (req, res) => {
       questions,
       total: questions.length,
       testTitle: test.title,
+      duration: test.duration,
     });
   } catch (err) {
     console.error("Get questions error:", err);
@@ -196,11 +197,9 @@ exports.bulkUploadQuestions = async (req, res) => {
       if (fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);
       }
-      return res
-        .status(400)
-        .json({
-          error: "Failed to parse Excel file. Please check the file format.",
-        });
+      return res.status(400).json({
+        error: "Failed to parse Excel file. Please check the file format.",
+      });
     }
 
     if (!questions || questions.length === 0) {

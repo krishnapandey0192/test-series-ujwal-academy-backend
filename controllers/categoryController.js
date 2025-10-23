@@ -1,5 +1,6 @@
 const Category = require("../models/Category");
 const Test = require("../models/Test");
+const Subcategory = require("../models/Subcategory");
 const mongoose = require("mongoose");
 
 exports.createCategory = async (req, res) => {
@@ -47,12 +48,23 @@ exports.getCategoryById = async (req, res) => {
     // Convert string ID to ObjectId for proper matching
     const categoryObjectId = new mongoose.Types.ObjectId(id);
 
-    // Get all tests related to this category with proper ObjectId matching
-    const tests = await Test.find({ categoryId: categoryObjectId }).sort({
-      createdAt: -1,
-    });
+    // Get all subcategories related to this category
+    const subcategories = await Subcategory.find({
+      categoryId: categoryObjectId,
+    }).sort({ name: 1 });
 
-    res.json({ category, tests });
+    // Get all tests related to this category with proper ObjectId matching
+    const tests = await Test.find({ categoryId: categoryObjectId })
+      .populate("subcategoryId", "name")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      category,
+      subcategories,
+      subcategoryCount: subcategories.length,
+      tests,
+      testCount: tests.length,
+    });
   } catch (err) {
     console.error("Get category error:", err);
     res.status(500).json({ error: "Failed to retrieve category" });
@@ -86,10 +98,22 @@ exports.deleteCategory = async (req, res) => {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: "Invalid category ID format" });
     }
-    // Optionally: delete all tests under this category
-    await Test.deleteMany({ categoryId: id });
+
+    const categoryObjectId = new mongoose.Types.ObjectId(id);
+
+    // Delete all tests under this category
+    await Test.deleteMany({ categoryId: categoryObjectId });
+
+    // Delete all subcategories under this category
+    await Subcategory.deleteMany({ categoryId: categoryObjectId });
+
+    // Delete the category
     await Category.findByIdAndDelete(id);
-    res.json({ message: "Category and related tests deleted successfully" });
+
+    res.json({
+      message:
+        "Category, subcategories, and related tests deleted successfully",
+    });
   } catch (err) {
     console.error("Delete category error:", err);
     res.status(500).json({ error: "Failed to delete category" });

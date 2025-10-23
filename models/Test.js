@@ -8,6 +8,11 @@ const testSchema = new mongoose.Schema(
       ref: "Category",
       required: [true, "Category is required"],
     },
+    subcategoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subcategory",
+      default: null,
+    },
     title: {
       type: String,
       required: [true, "Test title is required"],

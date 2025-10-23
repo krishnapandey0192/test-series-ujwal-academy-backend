@@ -10,6 +10,7 @@ const questionRoutes = require("./routes/question");
 const attemptRoutes = require("./routes/attempt");
 const performanceRoutes = require("./routes/performance");
 const categoryRoutes = require("./routes/category");
+const subcategoryRoutes = require("./routes/subcategory");
 
 // Import middleware
 const authenticateUser = require("./middleware/authMiddleware");
@@ -39,7 +40,7 @@ initializeServer();
 app.use(
   cors({
     // "https://test-series-ujwal-academy.vercel.app"
-    origin: "https://test-series-ujwal-academy.vercel.app", // your frontend URL
+    origin: "http://localhost:5173", // your frontend URL
     credentials: true,
   })
 );
@@ -49,7 +50,8 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
-app.use("/api/tests", authenticateUser, testRoutes);
+app.use("/api/subcategories", subcategoryRoutes);
+app.use("/api/tests", testRoutes);
 app.use("/api/questions", authenticateUser, questionRoutes);
 app.use("/api/attempts", authenticateUser, attemptRoutes);
 app.use("/api/performance", performanceRoutes);
