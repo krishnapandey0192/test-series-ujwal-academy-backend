@@ -41,7 +41,7 @@ app.use(
   cors({
     "https://test-series-ujwal-academy.vercel.app"
     // origin: "http://localhost:5173", // your frontend URL
-    credentials: true,
+    // credentials: true,
   })
 );
 app.use(express.json({ limit: "10mb" }));
