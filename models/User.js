@@ -36,6 +36,18 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\d{10}$/, "Please enter a valid 10-digit mobile number"],
     },
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    passwordChangedAt: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,

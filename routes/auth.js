@@ -6,12 +6,18 @@ const {
   getProfile,
   changePassword,
   getAllUsers,
+  forgotPassword,
+  resetPassword,
+  testEmail,
 } = require("../controllers/authController");
 const authenticateUser = require("../middleware/authMiddleware");
 
 // Public routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+router.post("/test-email", testEmail); // Remove in production
 
 // Protected routes
 router.get("/profile", authenticateUser, getProfile);
