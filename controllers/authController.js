@@ -225,13 +225,19 @@ exports.getAllUsers = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    console.log("[forgotPassword] Hit with email:", email);
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
+    console.log("[forgotPassword] User lookup:", {
+      exists: !!user,
+      email: email.toLowerCase().trim(),
+    });
     // Always respond with success to prevent email enumeration
     if (!user) {
+      console.log("[forgotPassword] No user found for email; returning generic success.");
       return res.json({ message: "If an account exists, a reset email has been sent" });
     }
 
@@ -245,6 +251,7 @@ exports.forgotPassword = async (req, res) => {
 
     const frontendBase = process.env.FRONTEND_URL || "http://localhost:5174";
     const resetUrl = `${frontendBase}/reset-password?token=${rawToken}`;
+    console.log("[forgotPassword] Generated resetUrl:", resetUrl);
 
     const html = `
     <!DOCTYPE html>
@@ -487,14 +494,27 @@ exports.forgotPassword = async (req, res) => {
     `;
 
     try {
-      await sendMail({
+      console.log("[forgotPassword] Attempting to send email via sendMail()", {
+        to: user.email,
+        subject: "Reset your password",
+        usingBrevoApi: !!process.env.BREVO_API_KEY,
+      });
+      const result = await sendMail({
         to: user.email,
         subject: "Reset your password",
         html,
       });
-      console.log(`Password reset email sent to: ${user.email}`);
+      console.log("[forgotPassword] Email send successful", {
+        to: user.email,
+        messageId: result?.messageId || result?.body?.messageId,
+      });
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+      console.error("[forgotPassword] Email sending failed", {
+        message: emailError?.message,
+        code: emailError?.code,
+        status: emailError?.status,
+        details: emailError?.details,
+      });
       // Still return success to maintain security
     }
 

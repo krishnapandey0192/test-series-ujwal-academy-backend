@@ -81,7 +81,6 @@ async function sendMail({ to, subject, html }) {
     const recipients = Array.isArray(to)
       ? to.map((email) => ({ email }))
       : [{ email: to }];
-
     const payload = {
       sender: senderName ? { email: from, name: senderName } : { email: from },
       to: recipients,
@@ -89,7 +88,31 @@ async function sendMail({ to, subject, html }) {
       htmlContent: html,
     };
 
-    return api.sendTransacEmail(payload);
+    try {
+      const result = await api.sendTransacEmail(payload);
+      if (process.env.EMAIL_DEBUG === "true") {
+        console.log("[Email Brevo API] Sent:", {
+          to: recipients,
+          subject,
+          messageId: result?.messageId || result?.body?.messageId,
+        });
+      }
+      return result;
+    } catch (err) {
+      const status = err?.response?.statusCode || err?.response?.status || err?.statusCode;
+      const body = err?.response?.body || err?.body;
+      const message = body?.message || err?.message || "Email send failed";
+      const code = body?.code || err?.code;
+      const details = { status, code, message };
+      if (process.env.EMAIL_DEBUG === "true") {
+        console.error("[Email Brevo API] Error:", details);
+      }
+      const e = new Error(message);
+      e.status = status;
+      e.code = code;
+      e.details = body || details;
+      throw e;
+    }
   }
 
   // Fallback to SMTP (if configured) or dev logger
