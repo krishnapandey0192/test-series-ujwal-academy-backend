@@ -1,8 +1,48 @@
 const Question = require("../models/Question");
 const Test = require("../models/Test");
+const crypto = require("crypto");
 const { parseExcelFile } = require("../utils/uploadExcel");
 const fs = require("fs");
 const path = require("path");
+
+// exports.getQuestionsByTest = async (req, res) => {
+//   try {
+//     const { testId } = req.params;
+//     const { includeAnswers = false } = req.query;
+
+//     if (!testId.match(/^[0-9a-fA-F]{24}$/)) {
+//       return res.status(400).json({ error: "Invalid test ID format" });
+//     }
+
+//     // Check if test exists
+//     const test = await Test.findById(testId);
+//     if (!test) {
+//       return res.status(404).json({ error: "Test not found" });
+//     }
+
+//     let questions = await Question.find({ testId })
+//       .sort({ createdAt: 1 })
+//       .lean();
+
+//     // For students, hide correct answers and explanations unless specified
+//     if (req.user.role === "student" && includeAnswers !== "true") {
+//       questions = questions.map((q) => {
+//         const { correctAnswer, explanation, ...questionWithoutAnswer } = q;
+//         return questionWithoutAnswer;
+//       });
+//     }
+
+//     res.json({
+//       questions,
+//       total: questions.length,
+//       testTitle: test.title,
+//       duration: test.duration,
+//     });
+//   } catch (err) {
+//     console.error("Get questions error:", err);
+//     res.status(500).json({ error: "Failed to retrieve questions" });
+//   }
+// };
 
 exports.getQuestionsByTest = async (req, res) => {
   try {
@@ -13,22 +53,21 @@ exports.getQuestionsByTest = async (req, res) => {
       return res.status(400).json({ error: "Invalid test ID format" });
     }
 
-    // Check if test exists
-    const test = await Test.findById(testId);
+    const test = await Test.findById(testId).lean();
     if (!test) {
       return res.status(404).json({ error: "Test not found" });
     }
 
     let questions = await Question.find({ testId })
-      .sort({ createdAt: 1 })
+      .sort({ sequence: 1 }) // ✅ FIXED
       .lean();
 
-    // For students, hide correct answers and explanations unless specified
-    if (req.user.role === "student" && includeAnswers !== "true") {
-      questions = questions.map((q) => {
-        const { correctAnswer, explanation, ...questionWithoutAnswer } = q;
-        return questionWithoutAnswer;
-      });
+    const showAnswers =
+      req.user.role === "admin" || includeAnswers === "true";
+
+    // Hide answers for students
+    if (req.user.role === "student" && !showAnswers) {
+      questions = questions.map(({ correctAnswer, explanation, ...rest }) => rest);
     }
 
     res.json({
@@ -138,6 +177,7 @@ exports.addQuestion = async (req, res) => {
   }
 };
 
+
 exports.bulkUploadQuestions = async (req, res) => {
   try {
     // Check admin role
@@ -154,27 +194,15 @@ exports.bulkUploadQuestions = async (req, res) => {
       return res.status(400).json({ error: "Excel file is required" });
     }
 
-    if (!testId) {
-      // Clean up uploaded file
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-      return res.status(400).json({ error: "Test ID is required" });
-    }
-
-    if (!testId.match(/^[0-9a-fA-F]{24}$/)) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-      return res.status(400).json({ error: "Invalid test ID format" });
+    if (!testId || !testId.match(/^[0-9a-fA-F]{24}$/)) {
+      fs.existsSync(file.path) && fs.unlinkSync(file.path);
+      return res.status(400).json({ error: "Invalid test ID" });
     }
 
     // Check if test exists
-    const testExists = await Test.findById(testId);
-    if (!testExists) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+    const test = await Test.findById(testId);
+    if (!test) {
+      fs.existsSync(file.path) && fs.unlinkSync(file.path);
       return res.status(404).json({ error: "Test not found" });
     }
 
@@ -182,42 +210,41 @@ exports.bulkUploadQuestions = async (req, res) => {
     const allowedTypes = [".xlsx", ".xls"];
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (!allowedTypes.includes(fileExt)) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+      fs.existsSync(file.path) && fs.unlinkSync(file.path);
       return res
         .status(400)
         .json({ error: "Only Excel files (.xlsx, .xls) are allowed" });
     }
 
+    // 🔍 Check if questions already exist
+    const existingCount = await Question.countDocuments({ testId });
+
+    // Parse Excel
     let questions;
     try {
       questions = parseExcelFile(file.path);
-    } catch (parseError) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+    } catch {
+      fs.existsSync(file.path) && fs.unlinkSync(file.path);
       return res.status(400).json({
-        error: "Failed to parse Excel file. Please check the file format.",
+        error: "Failed to parse Excel file",
       });
     }
 
+    fs.existsSync(file.path) && fs.unlinkSync(file.path);
+
     if (!questions || questions.length === 0) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
       return res
         .status(400)
         .json({ error: "No questions found in the Excel file" });
     }
 
+    const uploadBatchId = crypto.randomUUID();
     const formattedQuestions = [];
     const errors = [];
 
     questions.forEach((q, index) => {
-      const rowNumber = index + 2; // Assuming row 1 is headers
+      const rowNumber = index + 2;
 
-      // Validate required fields
       if (!q.questionText) {
         errors.push(`Row ${rowNumber}: Question text is required`);
         return;
@@ -237,23 +264,20 @@ exports.bulkUploadQuestions = async (req, res) => {
         return;
       }
 
-      if (!q.correctAnswer) {
-        errors.push(`Row ${rowNumber}: Correct answer is required`);
-        return;
-      }
-
-      if (!options.includes(q.correctAnswer)) {
+      if (!q.correctAnswer || !options.includes(q.correctAnswer)) {
         errors.push(
-          `Row ${rowNumber}: Correct answer must be one of the provided options`
+          `Row ${rowNumber}: Correct answer must be one of the options`
         );
         return;
       }
 
       formattedQuestions.push({
         testId,
+        uploadBatchId,
+        sequence: q.sequence ?? index + 1,
         section: q.section || "General",
         questionText: q.questionText.toString().trim(),
-        options: options.map((opt) => opt.toString().trim()),
+        options: options.map((o) => o.toString().trim()),
         correctAnswer: q.correctAnswer.toString().trim(),
         explanation: q.explanation ? q.explanation.toString().trim() : "",
         marks: parseFloat(q.marks) || 1,
@@ -262,47 +286,53 @@ exports.bulkUploadQuestions = async (req, res) => {
       });
     });
 
-    // Clean up uploaded file
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
-
-    if (errors.length > 0) {
+    if (errors.length) {
       return res.status(400).json({
         error: "Validation errors found",
         details: errors,
       });
     }
 
-    if (formattedQuestions.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No valid questions found to upload" });
-    }
-
-    // Insert questions
+    // 1️⃣ INSERT NEW QUESTIONS FIRST (SAFE)
     await Question.insertMany(formattedQuestions);
 
-    // Update test question count
-    const count = await Question.countDocuments({ testId });
-    await Test.findByIdAndUpdate(testId, { questionCount: count });
+    // 2️⃣ DELETE OLD QUESTIONS ONLY IF THEY EXIST
+    if (existingCount > 0) {
+      await Question.deleteMany({
+        testId,
+        uploadBatchId: { $ne: uploadBatchId },
+      });
+    }
+
+    // 3️⃣ CLEAN TEMP FLAG
+    await Question.updateMany(
+      { testId, uploadBatchId },
+      { $unset: { uploadBatchId: 1 } }
+    );
+
+    // 4️⃣ UPDATE TEST META
+    await Test.findByIdAndUpdate(testId, {
+      questionCount: formattedQuestions.length,
+    });
 
     res.status(201).json({
-      message: "Questions uploaded successfully",
+      message:
+        existingCount > 0
+          ? "Questions replaced successfully"
+          : "Questions uploaded successfully",
       total: formattedQuestions.length,
-      testId: testId,
+      testId,
     });
   } catch (err) {
     console.error("Bulk upload error:", err);
 
-    // Clean up file in case of error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({ error: "Failed to upload questions" });
+    // ❗ FAIL-SAFE: old questions still exist
+    res.status(500).json({
+      error: "Upload failed. Existing questions are safe.",
+    });
   }
 };
+
 
 exports.updateQuestion = async (req, res) => {
   try {

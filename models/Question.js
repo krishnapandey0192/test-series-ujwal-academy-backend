@@ -8,6 +8,10 @@ const questionSchema = new mongoose.Schema(
       ref: "Test",
       required: [true, "Test ID is required"],
     },
+    sequence: {
+      type: Number,
+      required: true,
+    },
     section: {
       type: String,
       required: [true, "Section is required"],
@@ -53,6 +57,10 @@ const questionSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Negative marks cannot be less than 0"],
     },
+    uploadBatchId: {
+      type: String,
+      index: true,
+    },
     difficulty: {
       type: String,
       enum: {
@@ -62,6 +70,7 @@ const questionSchema = new mongoose.Schema(
       default: "medium",
     },
   },
+
   {
     timestamps: true,
   }
