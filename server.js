@@ -41,7 +41,7 @@ app.use(
   cors({
     // "https://test-series-ujwal-academy.vercel.app"
     // http://localhost:5173
-    origin: "https://test-series-ujwal-academy.vercel.app", // your frontend URL
+    origin: "https://ujjwalacademymauganj.in", // your frontend URL
     credentials: true,
   })
 );
